@@ -1,9 +1,3 @@
-"""Application bootstrap for HILS Manager.
-
-Creates the QApplication, initialises the database, loads stylesheets,
-and launches the main window.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -14,6 +8,17 @@ from PySide6.QtWidgets import QApplication
 
 from hils_manager.database.connection import DatabaseConnection
 from hils_manager.database.migrations import run_migrations
+from hils_manager.repositories.member_repo import MemberRepository
+from hils_manager.repositories.project_repo import ProjectRepository
+from hils_manager.repositories.requirement_repo import RequirementRepository
+from hils_manager.repositories.wbs_repo import WBSRepository
+from hils_manager.repositories.estimate_repo import EstimateRepository
+from hils_manager.repositories.risk_repo import RiskRepository
+from hils_manager.repositories.process_repo import ProcessRepository
+from hils_manager.services.project_service import ProjectService
+from hils_manager.services.resource_service import ResourceService
+from hils_manager.services.estimate_service import EstimateService
+from hils_manager.services.risk_service import RiskService
 from hils_manager.views.main_window import MainWindow
 
 logger = logging.getLogger(__name__)
@@ -27,15 +32,9 @@ _DEFAULT_DB_PATH = _DEFAULT_DB_DIR / "hils_manager.db"
 
 
 def _resolve_db_path() -> Path:
-    """Determine the database file path.
-
-    Checks for a ``config.yaml`` next to the package first.  If it exists and
-    contains a ``database.path`` key the value is used.  Otherwise falls back
-    to ``./data/hils_manager.db`` relative to the working directory.
-    """
     if _CONFIG_PATH.exists():
         try:
-            import yaml  # type: ignore[import-untyped]
+            import yaml
 
             with _CONFIG_PATH.open(encoding="utf-8") as fh:
                 cfg = yaml.safe_load(fh)
@@ -50,7 +49,6 @@ def _resolve_db_path() -> Path:
 
 
 def run() -> int:
-    """Application entry point.  Returns the exit code."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -60,7 +58,6 @@ def run() -> int:
     app.setApplicationName("HILS開発管理")
     app.setOrganizationName("HILS Manager")
 
-    # --- Database -----------------------------------------------------------
     db_path = _resolve_db_path()
     db_path.parent.mkdir(parents=True, exist_ok=True)
     logger.info("データベース: %s", db_path)
@@ -69,16 +66,32 @@ def run() -> int:
     with db as conn:
         run_migrations(conn)
 
-    # --- Stylesheet ---------------------------------------------------------
     if _QSS_PATH.exists():
         qss = _QSS_PATH.read_text(encoding="utf-8")
         app.setStyleSheet(qss)
         logger.info("スタイルシート読み込み: %s", _QSS_PATH)
-    else:
-        logger.debug("スタイルシートが見つかりません: %s", _QSS_PATH)
 
-    # --- Main window --------------------------------------------------------
-    window = MainWindow()
+    member_repo = MemberRepository(db)
+    project_repo = ProjectRepository(db)
+    requirement_repo = RequirementRepository(db)
+    wbs_repo = WBSRepository(db)
+    estimate_repo = EstimateRepository(db)
+    risk_repo = RiskRepository(db)
+    process_repo = ProcessRepository(db)
+
+    project_service = ProjectService(project_repo, process_repo)
+    resource_service = ResourceService(member_repo, project_repo)
+    estimate_service = EstimateService(estimate_repo)
+    risk_service = RiskService(risk_repo)
+
+    window = MainWindow(
+        project_service=project_service,
+        resource_service=resource_service,
+        estimate_service=estimate_service,
+        risk_service=risk_service,
+        requirement_repo=requirement_repo,
+        wbs_repo=wbs_repo,
+    )
     window.show()
 
     return app.exec()
