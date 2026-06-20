@@ -8,6 +8,7 @@ from hils_manager.models.process_definition import (
     ProcessSelection,
 )
 from hils_manager.models.project import Project, ProjectAssignment
+from hils_manager.models.report import Report
 from hils_manager.models.requirement import Requirement
 from hils_manager.models.risk import Risk
 from hils_manager.models.team_member import TeamMember
@@ -25,6 +26,7 @@ __all__ = [
     "ProcessSelection",
     "Project",
     "ProjectAssignment",
+    "Report",
     "Requirement",
     "Risk",
     "TeamMember",

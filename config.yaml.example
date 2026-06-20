@@ -1,0 +1,10 @@
+# HILS開発管理アプリケーション 設定ファイル
+# このファイルを src/hils_manager/config.yaml にコピーして使用してください。
+# .gitignore に config.yaml を追加することを推奨します。
+
+database:
+  # データベースファイルのパス
+  # ネットワークドライブを指定する場合の例:
+  # path: "\\\\server\\share\\hils_manager\\hils_manager.db"
+  # path: "/mnt/shared/hils_manager/hils_manager.db"
+  path: "./data/hils_manager.db"

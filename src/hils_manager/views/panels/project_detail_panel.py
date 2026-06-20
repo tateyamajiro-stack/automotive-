@@ -270,6 +270,10 @@ class ProjectDetailPanel(QWidget):
     # プロジェクト読み込み
     # ------------------------------------------------------------------
 
+    def current_project(self) -> Project | None:
+        """Return the currently loaded project, or ``None``."""
+        return self._project
+
     def load_project(self, project_id: int) -> None:
         """プロジェクトデータを読み込み、全サブパネルを更新する."""
         self._project_id = project_id

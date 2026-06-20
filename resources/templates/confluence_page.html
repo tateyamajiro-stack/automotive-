@@ -1,0 +1,400 @@
+{# ===========================================================================
+   HILS Manager — Confluence Storage Format Template
+   This template outputs Confluence Storage Format (XHTML subset).
+   It is NOT a full HTML document — intended for Confluence page body content.
+   =========================================================================== #}
+
+{# ---- Summary Info Panel ---- #}
+<ac:structured-macro ac:name="info">
+  <ac:rich-text-body>
+    <p>
+      <strong>プロジェクト詳細レポート</strong><br />
+      {% if project %}プロジェクト名: {{ project.name|default('—') }}<br />{% endif %}
+      レポート作成日: {{ report_date|default('')|jp_date }}
+    </p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+
+{# ================================================================
+   1. PROJECT OVERVIEW
+   ================================================================ #}
+{% if project %}
+<h2>プロジェクト概要</h2>
+
+<table>
+  <tbody>
+    <tr>
+      <th>プロジェクトコード</th>
+      <td>{{ project.project_code|default('—') }}</td>
+    </tr>
+    <tr>
+      <th>プロジェクト名</th>
+      <td>{{ project.name|default('—') }}</td>
+    </tr>
+    <tr>
+      <th>ステータス</th>
+      <td>
+        {% set st = project.status|default('') %}
+        {% if st %}
+          {% set st_val = st.value|default(st) %}
+          {% if st_val == 'completed' %}
+            <ac:structured-macro ac:name="status">
+              <ac:parameter ac:name="title">{{ st.label|default(st) }}</ac:parameter>
+              <ac:parameter ac:name="colour">Green</ac:parameter>
+            </ac:structured-macro>
+          {% elif st_val == 'active' or st_val == 'in_progress' %}
+            <ac:structured-macro ac:name="status">
+              <ac:parameter ac:name="title">{{ st.label|default(st) }}</ac:parameter>
+              <ac:parameter ac:name="colour">Yellow</ac:parameter>
+            </ac:structured-macro>
+          {% elif st_val == 'planning' %}
+            <ac:structured-macro ac:name="status">
+              <ac:parameter ac:name="title">{{ st.label|default(st) }}</ac:parameter>
+              <ac:parameter ac:name="colour">Blue</ac:parameter>
+            </ac:structured-macro>
+          {% elif st_val == 'on_hold' or st_val == 'blocked' %}
+            <ac:structured-macro ac:name="status">
+              <ac:parameter ac:name="title">{{ st.label|default(st) }}</ac:parameter>
+              <ac:parameter ac:name="colour">Red</ac:parameter>
+            </ac:structured-macro>
+          {% elif st_val == 'cancelled' %}
+            <ac:structured-macro ac:name="status">
+              <ac:parameter ac:name="title">{{ st.label|default(st) }}</ac:parameter>
+              <ac:parameter ac:name="colour">Grey</ac:parameter>
+            </ac:structured-macro>
+          {% else %}
+            {{ st.label|default(st) }}
+          {% endif %}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <th>計画期間</th>
+      <td>
+        {{ project.start_date|default('')|jp_date }}
+        {% if project.start_date and project.end_date %} 〜 {% endif %}
+        {{ project.end_date|default('')|jp_date }}
+      </td>
+    </tr>
+    {% if project.description %}
+    <tr>
+      <th>概要</th>
+      <td>{{ project.description }}</td>
+    </tr>
+    {% endif %}
+  </tbody>
+</table>
+{% endif %}
+
+{# ================================================================
+   2. EFFORT ESTIMATES
+   ================================================================ #}
+{% if estimates %}
+<h2>工数実績</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>項目</th>
+      <th>値</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>計画工数</td>
+      <td>{{ estimates.planned_hours|default(0)|man_hours }}</td>
+    </tr>
+    <tr>
+      <td>実績工数</td>
+      <td>{{ estimates.actual_hours|default(0)|man_hours }}</td>
+    </tr>
+    <tr>
+      <td>差異率</td>
+      <td>
+        {% set vp = estimates.variance_pct|default(0) %}
+        {{ '%+.1f'|format(vp) }}%
+        {% if vp > 10 %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">超過</ac:parameter>
+            <ac:parameter ac:name="colour">Red</ac:parameter>
+          </ac:structured-macro>
+        {% elif vp > 0 %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">やや超過</ac:parameter>
+            <ac:parameter ac:name="colour">Yellow</ac:parameter>
+          </ac:structured-macro>
+        {% else %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">正常</ac:parameter>
+            <ac:parameter ac:name="colour">Green</ac:parameter>
+          </ac:structured-macro>
+        {% endif %}
+      </td>
+    </tr>
+    {% if estimates.planned_lead_days is defined %}
+    <tr>
+      <td>計画リードタイム</td>
+      <td>{{ estimates.planned_lead_days|default(0) }} 日</td>
+    </tr>
+    <tr>
+      <td>実績リードタイム</td>
+      <td>{{ estimates.actual_lead_days|default(0) }} 日</td>
+    </tr>
+    {% endif %}
+  </tbody>
+</table>
+{% endif %}
+
+{# ================================================================
+   3. WBS ESTIMATES BREAKDOWN
+   ================================================================ #}
+{% if estimates_by_wbs %}
+<h2>WBS別工数</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>WBS ID</th>
+      <th>タイトル</th>
+      <th>計画工数</th>
+      <th>実績工数</th>
+      <th>差異率</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in estimates_by_wbs %}
+    <tr>
+      <td>{{ item.wbs_item_id|default('—') }}</td>
+      <td>{{ item.wbs_title|default('—') }}</td>
+      <td>{{ item.planned_hours|default(0)|man_hours }}</td>
+      <td>{{ item.actual_hours|default(0)|man_hours }}</td>
+      <td>{{ '%+.1f'|format(item.variance_pct|default(0)) }}%</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{# ================================================================
+   4. RISK STATUS
+   ================================================================ #}
+{% if risk_summary or risks %}
+<h2>リスク状況</h2>
+
+{% if risk_summary %}
+<ac:structured-macro ac:name="info">
+  <ac:rich-text-body>
+    <p>
+      総リスク数: <strong>{{ risk_summary.total|default(0) }}</strong> /
+      未対応: <strong>{{ risk_summary.open|default(0) }}</strong> /
+      高リスク: <strong>{{ risk_summary.high_risk_count|default(0) }}</strong> /
+      解決済: <strong>{{ risk_summary.resolved|default(0) }}</strong>
+    </p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+{% endif %}
+
+{% if risks %}
+<table>
+  <thead>
+    <tr>
+      <th>リスク番号</th>
+      <th>タイトル</th>
+      <th>発生確率</th>
+      <th>影響度</th>
+      <th>ステータス</th>
+      <th>対策</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in risks %}
+    <tr>
+      <td>{{ r.risk_number|default('—') }}</td>
+      <td>{{ r.title|default('—') }}</td>
+      <td>
+        {% set prob = r.probability|default('') %}
+        {% set prob_val = prob.value|default(prob) %}
+        {% if prob_val == 'high' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">HIGH</ac:parameter>
+            <ac:parameter ac:name="colour">Red</ac:parameter>
+          </ac:structured-macro>
+        {% elif prob_val == 'medium' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">MEDIUM</ac:parameter>
+            <ac:parameter ac:name="colour">Yellow</ac:parameter>
+          </ac:structured-macro>
+        {% elif prob_val == 'low' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">LOW</ac:parameter>
+            <ac:parameter ac:name="colour">Green</ac:parameter>
+          </ac:structured-macro>
+        {% else %}
+          {{ prob_val }}
+        {% endif %}
+      </td>
+      <td>
+        {% set imp = r.impact|default('') %}
+        {% set imp_val = imp.value|default(imp) %}
+        {% if imp_val == 'high' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">HIGH</ac:parameter>
+            <ac:parameter ac:name="colour">Red</ac:parameter>
+          </ac:structured-macro>
+        {% elif imp_val == 'medium' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">MEDIUM</ac:parameter>
+            <ac:parameter ac:name="colour">Yellow</ac:parameter>
+          </ac:structured-macro>
+        {% elif imp_val == 'low' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">LOW</ac:parameter>
+            <ac:parameter ac:name="colour">Green</ac:parameter>
+          </ac:structured-macro>
+        {% else %}
+          {{ imp_val }}
+        {% endif %}
+      </td>
+      <td>
+        {% set rs = r.status|default('') %}
+        {% set rs_val = rs.value|default(rs) %}
+        {% if rs_val == 'resolved' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">{{ rs.label|default(rs) }}</ac:parameter>
+            <ac:parameter ac:name="colour">Green</ac:parameter>
+          </ac:structured-macro>
+        {% elif rs_val == 'mitigating' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">{{ rs.label|default(rs) }}</ac:parameter>
+            <ac:parameter ac:name="colour">Yellow</ac:parameter>
+          </ac:structured-macro>
+        {% elif rs_val == 'open' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">{{ rs.label|default(rs) }}</ac:parameter>
+            <ac:parameter ac:name="colour">Red</ac:parameter>
+          </ac:structured-macro>
+        {% elif rs_val == 'accepted' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">{{ rs.label|default(rs) }}</ac:parameter>
+            <ac:parameter ac:name="colour">Blue</ac:parameter>
+          </ac:structured-macro>
+        {% else %}
+          {{ rs.label|default(rs) }}
+        {% endif %}
+      </td>
+      <td>{{ r.mitigation|default('—') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endif %}
+
+{# ================================================================
+   5. REQUIREMENTS
+   ================================================================ #}
+{% if requirements %}
+<h2>要望一覧</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>要望番号</th>
+      <th>タイトル</th>
+      <th>優先度</th>
+      <th>ステータス</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for req in requirements %}
+    <tr>
+      <td>{{ req.req_number|default('—') }}</td>
+      <td>{{ req.title|default('—') }}</td>
+      <td>
+        {% set pri = req.priority|default('') %}
+        {% set pri_val = pri.value|default(pri) %}
+        {% if pri_val == 'critical' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">{{ pri.label|default(pri) }}</ac:parameter>
+            <ac:parameter ac:name="colour">Red</ac:parameter>
+          </ac:structured-macro>
+        {% elif pri_val == 'high' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">{{ pri.label|default(pri) }}</ac:parameter>
+            <ac:parameter ac:name="colour">Yellow</ac:parameter>
+          </ac:structured-macro>
+        {% elif pri_val == 'medium' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">{{ pri.label|default(pri) }}</ac:parameter>
+            <ac:parameter ac:name="colour">Blue</ac:parameter>
+          </ac:structured-macro>
+        {% else %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">{{ pri.label|default(pri) }}</ac:parameter>
+            <ac:parameter ac:name="colour">Grey</ac:parameter>
+          </ac:structured-macro>
+        {% endif %}
+      </td>
+      <td>
+        {% set rqs = req.status|default('') %}
+        {% set rqs_val = rqs.value|default(rqs) %}
+        {% if rqs_val == 'verified' or rqs_val == 'implemented' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">{{ rqs.label|default(rqs) }}</ac:parameter>
+            <ac:parameter ac:name="colour">Green</ac:parameter>
+          </ac:structured-macro>
+        {% elif rqs_val == 'in_progress' or rqs_val == 'accepted' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">{{ rqs.label|default(rqs) }}</ac:parameter>
+            <ac:parameter ac:name="colour">Yellow</ac:parameter>
+          </ac:structured-macro>
+        {% elif rqs_val == 'new' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">{{ rqs.label|default(rqs) }}</ac:parameter>
+            <ac:parameter ac:name="colour">Blue</ac:parameter>
+          </ac:structured-macro>
+        {% elif rqs_val == 'rejected' or rqs_val == 'deferred' %}
+          <ac:structured-macro ac:name="status">
+            <ac:parameter ac:name="title">{{ rqs.label|default(rqs) }}</ac:parameter>
+            <ac:parameter ac:name="colour">Grey</ac:parameter>
+          </ac:structured-macro>
+        {% else %}
+          {{ rqs.label|default(rqs) }}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{# ================================================================
+   6. ASSIGNMENTS
+   ================================================================ #}
+{% if assignments %}
+<h2>アサイン状況</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>メンバー名</th>
+      <th>役割</th>
+      <th>アサイン率</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for a in assignments %}
+    <tr>
+      <td>{{ a.member_name|default('—') }}</td>
+      <td>{{ a.role|default('—') }}</td>
+      <td>{{ a.allocation_pct|default(0) }}%</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{# ---- Generation Note ---- #}
+<p><em>本ページは HILS Manager により {{ report_date|default('')|jp_date }} に自動生成されました。</em></p>

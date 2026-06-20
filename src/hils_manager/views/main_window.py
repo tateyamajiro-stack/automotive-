@@ -25,9 +25,12 @@ from hils_manager.views.panels.resource_panel import ResourcePanel
 from hils_manager.views.dialogs.project_dialog import ProjectDialog
 
 if TYPE_CHECKING:
-    from hils_manager.services.project_service import ProjectService
-    from hils_manager.services.resource_service import ResourceService
+    from hils_manager.integrations.config import ConnectionConfig
     from hils_manager.services.estimate_service import EstimateService
+    from hils_manager.services.jira_service import JiraService
+    from hils_manager.services.project_service import ProjectService
+    from hils_manager.services.report_service import ReportService
+    from hils_manager.services.resource_service import ResourceService
     from hils_manager.services.risk_service import RiskService
     from hils_manager.repositories.requirement_repo import RequirementRepository
     from hils_manager.repositories.wbs_repo import WBSRepository
@@ -62,6 +65,9 @@ class MainWindow(QMainWindow):
         risk_service: RiskService,
         requirement_repo: RequirementRepository,
         wbs_repo: WBSRepository,
+        jira_service: JiraService | None = None,
+        report_service: ReportService | None = None,
+        connection_config: ConnectionConfig | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -72,6 +78,9 @@ class MainWindow(QMainWindow):
         self._risk_service = risk_service
         self._requirement_repo = requirement_repo
         self._wbs_repo = wbs_repo
+        self._jira_service = jira_service
+        self._report_service = report_service
+        self._connection_config = connection_config
 
         self.setWindowTitle(f"HILS開発管理システム v{self.VERSION}")
         self.setMinimumSize(1200, 800)
@@ -88,6 +97,11 @@ class MainWindow(QMainWindow):
         db_settings_action = QAction("データベース設定", self)
         db_settings_action.triggered.connect(self._on_db_settings)
         file_menu.addAction(db_settings_action)
+
+        conn_settings_action = QAction("接続設定", self)
+        conn_settings_action.triggered.connect(self._on_connection_settings)
+        file_menu.addAction(conn_settings_action)
+
         file_menu.addSeparator()
         exit_action = QAction("終了", self)
         exit_action.setShortcut("Ctrl+Q")
@@ -122,17 +136,19 @@ class MainWindow(QMainWindow):
         new_project_action.triggered.connect(self._on_new_project)
         toolbar.addAction(new_project_action)
 
-        jira_sync_action = QAction("Jira同期", self)
-        jira_sync_action.setToolTip("Jiraと同期 (未実装)")
-        jira_sync_action.setEnabled(False)
-        toolbar.addAction(jira_sync_action)
+        self._jira_sync_action = QAction("Jira同期", self)
+        self._jira_sync_action.setToolTip("Jiraと同期")
+        self._jira_sync_action.setEnabled(self._jira_service is not None)
+        self._jira_sync_action.triggered.connect(self._on_jira_sync)
+        toolbar.addAction(self._jira_sync_action)
 
         toolbar.addSeparator()
 
-        report_action = QAction("レポート", self)
-        report_action.setToolTip("レポート出力 (未実装)")
-        report_action.setEnabled(False)
-        toolbar.addAction(report_action)
+        self._report_action = QAction("レポート", self)
+        self._report_action.setToolTip("レポート出力")
+        self._report_action.setEnabled(self._report_service is not None)
+        self._report_action.triggered.connect(self._on_report)
+        toolbar.addAction(self._report_action)
 
     def _setup_central_widget(self) -> None:
         central = QWidget()
@@ -236,6 +252,70 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self, "データベース設定", "データベース設定ダイアログは今後実装されます。"
         )
+
+    def _on_connection_settings(self) -> None:
+        if self._connection_config is None:
+            QMessageBox.warning(
+                self, "接続設定", "接続設定が利用できません。アプリケーションを再起動してください。"
+            )
+            return
+
+        from hils_manager.views.dialogs.connection_settings_dialog import (
+            ConnectionSettingsDialog,
+        )
+
+        dialog = ConnectionSettingsDialog(self._connection_config, parent=self)
+        dialog.exec()
+
+    def _on_jira_sync(self) -> None:
+        if self._jira_service is None:
+            QMessageBox.warning(self, "Jira同期", "Jira接続が設定されていません。\nファイル → 接続設定 から設定してください。")
+            return
+
+        current_project = self.project_detail_panel.current_project()
+        if current_project is None:
+            QMessageBox.information(self, "Jira同期", "同期する案件を選択してください。\n案件一覧から案件を開いてください。")
+            return
+
+        jira_key = current_project.jira_project_key
+        if not jira_key:
+            QMessageBox.warning(
+                self,
+                "Jira同期",
+                f"案件「{current_project.name}」にJiraプロジェクトキーが設定されていません。\n"
+                "案件の基本情報タブでJiraプロジェクトキーを設定してください。",
+            )
+            return
+
+        from hils_manager.views.dialogs.jira_sync_dialog import JiraSyncDialog
+
+        dialog = JiraSyncDialog(
+            self._jira_service,
+            current_project.id,
+            current_project.name,
+            jira_key,
+            parent=self,
+        )
+        dialog.exec()
+
+    def _on_report(self) -> None:
+        if self._report_service is None:
+            QMessageBox.warning(self, "レポート", "レポートサービスが利用できません。")
+            return
+
+        current_project = self.project_detail_panel.current_project()
+        project_id = current_project.id if current_project else None
+        project_name = current_project.name if current_project else ""
+
+        from hils_manager.views.dialogs.report_dialog import ReportDialog
+
+        dialog = ReportDialog(
+            self._report_service,
+            project_id,
+            project_name,
+            parent=self,
+        )
+        dialog.exec()
 
     def _on_about(self) -> None:
         QMessageBox.about(

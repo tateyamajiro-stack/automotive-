@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>プロジェクトサマリーレポート — {{ project.name|default('') }}</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: "Yu Gothic UI", "Yu Gothic", "Meiryo UI", "Meiryo",
+               "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #2c3e50;
+  background: #f5f6fa;
+  margin: 0;
+  padding: 0;
+}
+
+.report-container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 32px;
+  background: #ffffff;
+}
+
+/* ---- Header ------------------------------------------------------------ */
+.report-header {
+  border-bottom: 3px solid #2c3e50;
+  padding-bottom: 14px;
+  margin-bottom: 24px;
+}
+
+.report-header h1 {
+  font-size: 20px;
+  color: #2c3e50;
+  margin: 0 0 4px;
+}
+
+.report-header .project-name {
+  font-size: 15px;
+  color: #3498db;
+  margin: 4px 0;
+}
+
+.report-header .report-meta {
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+/* ---- Sections ---------------------------------------------------------- */
+.section {
+  margin-bottom: 24px;
+  page-break-inside: avoid;
+}
+
+.section h2 {
+  font-size: 15px;
+  color: #2c3e50;
+  border-left: 4px solid #3498db;
+  padding-left: 10px;
+  margin: 0 0 12px;
+}
+
+/* ---- Key-value --------------------------------------------------------- */
+.kv-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+.kv-table th {
+  width: 160px;
+  text-align: right;
+  padding: 6px 12px 6px 0;
+  color: #7f8c8d;
+  font-weight: bold;
+  border-bottom: 1px solid #e8eaed;
+  vertical-align: top;
+}
+
+.kv-table td {
+  padding: 6px 0;
+  border-bottom: 1px solid #e8eaed;
+}
+
+/* ---- Metric cards ------------------------------------------------------ */
+.metrics-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.metric-card {
+  flex: 1 1 120px;
+  background: #f5f6fa;
+  border: 1px solid #dcdde1;
+  border-radius: 6px;
+  padding: 12px 14px;
+  text-align: center;
+}
+
+.metric-card .metric-value {
+  font-size: 22px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.metric-card .metric-label {
+  font-size: 11px;
+  color: #7f8c8d;
+  margin-top: 2px;
+}
+
+/* ---- Badges ------------------------------------------------------------ */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.badge-completed, .badge-resolved { background: rgba(39,174,96,.14); color: #27ae60; }
+.badge-active, .badge-in_progress, .badge-mitigating { background: rgba(243,156,18,.14); color: #f39c12; }
+.badge-planning, .badge-new, .badge-accepted { background: rgba(52,152,219,.14); color: #3498db; }
+.badge-on_hold, .badge-blocked { background: rgba(231,76,60,.14); color: #e74c3c; }
+.badge-cancelled, .badge-rejected { background: rgba(149,165,166,.14); color: #95a5a6; }
+.badge-open { background: rgba(231,76,60,.14); color: #e74c3c; }
+
+.variance-over { color: #e74c3c; font-weight: bold; }
+.variance-under { color: #27ae60; }
+
+/* ---- Footer ------------------------------------------------------------ */
+.report-footer {
+  margin-top: 24px;
+  padding-top: 10px;
+  border-top: 1px solid #dcdde1;
+  font-size: 11px;
+  color: #95a5a6;
+  text-align: center;
+}
+
+.num-right { text-align: right; }
+
+/* ---- Print ------------------------------------------------------------- */
+@media print {
+  body { background: #fff; font-size: 11px; }
+  .report-container { max-width: 100%; padding: 0; }
+  .metric-card { border: 1px solid #ccc; }
+}
+</style>
+</head>
+<body>
+<div class="report-container">
+
+  {# ================================================================
+     HEADER
+     ================================================================ #}
+  <header class="report-header">
+    <h1>プロジェクトサマリーレポート</h1>
+    {% if project %}
+    <p class="project-name">{{ project.name|default('') }}</p>
+    {% endif %}
+    <p class="report-meta">レポート作成日: {{ report_date|default('')|jp_date }}</p>
+  </header>
+
+  {# ================================================================
+     PROJECT STATUS
+     ================================================================ #}
+  {% if project %}
+  <section class="section">
+    <h2>プロジェクト状況</h2>
+    <table class="kv-table">
+      <tr>
+        <th>プロジェクトコード</th>
+        <td>{{ project.project_code|default('—') }}</td>
+      </tr>
+      <tr>
+        <th>ステータス</th>
+        <td>
+          {% set st = project.status|default('') %}
+          {% if st %}
+            <span class="badge badge-{{ st.value|default(st) }}">{{ st.label|default(st) }}</span>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <th>計画期間</th>
+        <td>
+          {{ project.start_date|default('')|jp_date }}
+          {% if project.start_date and project.end_date %} 〜 {% endif %}
+          {{ project.end_date|default('')|jp_date }}
+        </td>
+      </tr>
+    </table>
+  </section>
+  {% endif %}
+
+  {# ================================================================
+     KEY METRICS
+     ================================================================ #}
+  {% if estimates or risk_summary or assignments %}
+  <section class="section">
+    <h2>主要指標</h2>
+    <div class="metrics-row">
+      {% if estimates %}
+      <div class="metric-card">
+        <div class="metric-value">{{ estimates.planned_hours|default(0)|man_hours }}</div>
+        <div class="metric-label">計画工数</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">{{ estimates.actual_hours|default(0)|man_hours }}</div>
+        <div class="metric-label">実績工数</div>
+      </div>
+      <div class="metric-card">
+        {% set vp = estimates.variance_pct|default(0) %}
+        <div class="metric-value {% if vp > 0 %}variance-over{% elif vp < 0 %}variance-under{% endif %}">
+          {{ '%+.1f'|format(vp) }}%
+        </div>
+        <div class="metric-label">差異率</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="metrics-row">
+      {% if risk_summary %}
+      <div class="metric-card">
+        <div class="metric-value" style="color:#e74c3c">{{ risk_summary.open|default(0) }}</div>
+        <div class="metric-label">未対応リスク</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" style="color:#e74c3c">{{ risk_summary.high_risk_count|default(0) }}</div>
+        <div class="metric-label">高リスク</div>
+      </div>
+      {% endif %}
+      {% if assignments %}
+      <div class="metric-card">
+        <div class="metric-value">{{ assignments|length }}</div>
+        <div class="metric-label">アサイン人数</div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# ================================================================
+     RISK HIGHLIGHTS
+     ================================================================ #}
+  {% if risks %}
+  <section class="section">
+    <h2>リスクハイライト</h2>
+    {% set high_risks = [] %}
+    {% for r in risks %}
+      {% if r.probability.value|default(r.probability) == 'high' or r.impact.value|default(r.impact) == 'high' %}
+        {% if high_risks.append(r) %}{% endif %}
+      {% endif %}
+    {% endfor %}
+    {% if high_risks %}
+    <table class="kv-table">
+      {% for r in high_risks %}
+      <tr>
+        <th>{{ r.risk_number|default('—') }}</th>
+        <td>
+          {{ r.title|default('—') }}
+          —
+          {% set rs = r.status|default('') %}
+          <span class="badge badge-{{ rs.value|default(rs) }}">{{ rs.label|default(rs) }}</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p style="color:#7f8c8d;font-size:12px;">高リスク項目はありません。</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {# ================================================================
+     FOOTER
+     ================================================================ #}
+  <footer class="report-footer">
+    本レポートは HILS Manager により自動生成されました。<br>
+    生成日時: {{ report_date|default('')|jp_date }}
+  </footer>
+
+</div>
+</body>
+</html>

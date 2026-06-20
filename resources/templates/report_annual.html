@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>年次レポート</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: "Yu Gothic UI", "Yu Gothic", "Meiryo UI", "Meiryo",
+               "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #2c3e50;
+  background: #f5f6fa;
+  margin: 0;
+  padding: 0;
+}
+
+.report-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 32px;
+  background: #ffffff;
+}
+
+/* ---- Header ------------------------------------------------------------ */
+.report-header {
+  border-bottom: 3px solid #2c3e50;
+  padding-bottom: 16px;
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.report-header h1 {
+  font-size: 24px;
+  color: #2c3e50;
+  margin: 0 0 6px;
+}
+
+.report-header .report-meta {
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+.period-label {
+  display: inline-block;
+  background: #2c3e50;
+  color: #fff;
+  padding: 4px 18px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+/* ---- Sections ---------------------------------------------------------- */
+.section {
+  margin-bottom: 32px;
+  page-break-inside: avoid;
+}
+
+.section h2 {
+  font-size: 17px;
+  color: #2c3e50;
+  border-left: 4px solid #3498db;
+  padding-left: 12px;
+  margin: 0 0 16px;
+}
+
+.section h3 {
+  font-size: 14px;
+  color: #34495e;
+  margin: 18px 0 8px;
+}
+
+/* ---- Tables ------------------------------------------------------------ */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+thead th {
+  background: #f5f6fa;
+  color: #2c3e50;
+  font-weight: bold;
+  padding: 8px 10px;
+  border-bottom: 2px solid #dcdde1;
+  text-align: left;
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #e8eaed;
+  vertical-align: top;
+}
+
+tbody tr:nth-child(even) { background: #f8f9fb; }
+tbody tr:hover { background: rgba(52,152,219,.06); }
+
+tfoot td {
+  padding: 8px 10px;
+  border-top: 2px solid #dcdde1;
+  font-weight: bold;
+  background: #f5f6fa;
+}
+
+/* ---- Metric cards ------------------------------------------------------ */
+.metrics-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.metric-card {
+  flex: 1 1 140px;
+  background: #f5f6fa;
+  border: 1px solid #dcdde1;
+  border-radius: 6px;
+  padding: 16px 18px;
+  text-align: center;
+}
+
+.metric-card .metric-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.metric-card .metric-label {
+  font-size: 11px;
+  color: #7f8c8d;
+  margin-top: 3px;
+}
+
+/* large-size card for total hours */
+.metric-card-lg {
+  flex: 1 1 200px;
+  background: #2c3e50;
+  border: none;
+  color: #fff;
+}
+
+.metric-card-lg .metric-value { color: #fff; font-size: 32px; }
+.metric-card-lg .metric-label { color: #bdc3c7; }
+
+/* ---- Badges ------------------------------------------------------------ */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.badge-completed { background: rgba(39,174,96,.14); color: #27ae60; }
+.badge-active, .badge-in_progress { background: rgba(243,156,18,.14); color: #f39c12; }
+.badge-planning { background: rgba(52,152,219,.14); color: #3498db; }
+.badge-on_hold { background: rgba(231,76,60,.14); color: #e74c3c; }
+.badge-cancelled { background: rgba(149,165,166,.14); color: #95a5a6; }
+
+/* ---- Notes ------------------------------------------------------------- */
+.notes-area {
+  background: #fefce8;
+  border: 1px dashed #f39c12;
+  border-radius: 4px;
+  padding: 14px 18px;
+  font-size: 12px;
+  color: #7f8c8d;
+  min-height: 80px;
+}
+
+.notes-area ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.notes-area li {
+  margin-bottom: 4px;
+}
+
+/* ---- Footer ------------------------------------------------------------ */
+.report-footer {
+  margin-top: 32px;
+  padding-top: 12px;
+  border-top: 1px solid #dcdde1;
+  font-size: 11px;
+  color: #95a5a6;
+  text-align: center;
+}
+
+.num-right { text-align: right; }
+
+/* ---- Print ------------------------------------------------------------- */
+@media print {
+  body { background: #fff; font-size: 11px; }
+  .report-container { max-width: 100%; padding: 0; }
+  .metric-card { border: 1px solid #ccc; }
+  .metric-card-lg { background: #2c3e50; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .notes-area { border: 1px solid #ccc; background: #fff; }
+}
+</style>
+</head>
+<body>
+<div class="report-container">
+
+  {# ================================================================
+     HEADER
+     ================================================================ #}
+  <header class="report-header">
+    <h1>年次レポート</h1>
+    {% if period_start and period_end %}
+    <span class="period-label">
+      {{ period_start|jp_date }} 〜 {{ period_end|jp_date }}
+    </span>
+    {% endif %}
+    <p class="report-meta">レポート作成日: {{ report_date|default('')|jp_date }}</p>
+  </header>
+
+  {# ================================================================
+     1. OVERVIEW METRICS
+     ================================================================ #}
+  <section class="section">
+    <h2>年間サマリー</h2>
+
+    {% if projects %}
+    {# Compute status counts #}
+    {% set counts = namespace(total=0, completed=0, active=0, planning=0, on_hold=0, cancelled=0) %}
+    {% for p in projects %}
+      {% set counts.total = counts.total + 1 %}
+      {% set pst = p.status.value|default(p.status)|default('') %}
+      {% if pst == 'completed' %}{% set counts.completed = counts.completed + 1 %}
+      {% elif pst == 'active' %}{% set counts.active = counts.active + 1 %}
+      {% elif pst == 'planning' %}{% set counts.planning = counts.planning + 1 %}
+      {% elif pst == 'on_hold' %}{% set counts.on_hold = counts.on_hold + 1 %}
+      {% elif pst == 'cancelled' %}{% set counts.cancelled = counts.cancelled + 1 %}
+      {% endif %}
+    {% endfor %}
+
+    <div class="metrics-row">
+      <div class="metric-card metric-card-lg">
+        <div class="metric-value">{{ counts.total }}</div>
+        <div class="metric-label">プロジェクト総数</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" style="color:#27ae60">{{ counts.completed }}</div>
+        <div class="metric-label">完了</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" style="color:#f39c12">{{ counts.active }}</div>
+        <div class="metric-label">実行中</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" style="color:#3498db">{{ counts.planning }}</div>
+        <div class="metric-label">計画中</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" style="color:#e74c3c">{{ counts.on_hold }}</div>
+        <div class="metric-label">保留</div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if estimates %}
+    <div class="metrics-row">
+      <div class="metric-card metric-card-lg">
+        <div class="metric-value">{{ estimates.actual_hours|default(0)|man_hours }}</div>
+        <div class="metric-label">年間総実績工数</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">{{ estimates.planned_hours|default(0)|man_hours }}</div>
+        <div class="metric-label">年間計画工数</div>
+      </div>
+      <div class="metric-card">
+        {% set vp = estimates.variance_pct|default(0) %}
+        <div class="metric-value {% if vp > 0 %}variance-over{% elif vp < 0 %}variance-under{% endif %}" style="font-size:22px;">
+          {{ '%+.1f'|format(vp) }}%
+        </div>
+        <div class="metric-label">差異率</div>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+
+  {# ================================================================
+     2. PROJECT LIST
+     ================================================================ #}
+  {% if projects %}
+  <section class="section">
+    <h2>プロジェクト一覧</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>コード</th>
+          <th>プロジェクト名</th>
+          <th>ステータス</th>
+          <th>開始日</th>
+          <th>終了日</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in projects %}
+        <tr>
+          <td>{{ p.project_code|default('—') }}</td>
+          <td>{{ p.name|default('—') }}</td>
+          <td>
+            {% set pst = p.status|default('') %}
+            {% if pst %}
+              <span class="badge badge-{{ pst.value|default(pst) }}">{{ pst.label|default(pst) }}</span>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>{{ p.start_date|default('')|jp_date }}</td>
+          <td>{{ p.end_date|default('')|jp_date }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  {# ================================================================
+     3. EFFORT BREAKDOWN BY WBS (if provided)
+     ================================================================ #}
+  {% if estimates_by_wbs %}
+  <section class="section">
+    <h2>WBS別工数集計</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>WBS ID</th>
+          <th>タイトル</th>
+          <th class="num-right">計画工数</th>
+          <th class="num-right">実績工数</th>
+          <th class="num-right">差異率</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set total_planned = namespace(h=0) %}
+        {% set total_actual = namespace(h=0) %}
+        {% for item in estimates_by_wbs %}
+        {% set total_planned.h = total_planned.h + (item.planned_hours|default(0)) %}
+        {% set total_actual.h = total_actual.h + (item.actual_hours|default(0)) %}
+        <tr>
+          <td>{{ item.wbs_item_id|default('—') }}</td>
+          <td>{{ item.wbs_title|default('—') }}</td>
+          <td class="num-right">{{ item.planned_hours|default(0)|man_hours }}</td>
+          <td class="num-right">{{ item.actual_hours|default(0)|man_hours }}</td>
+          {% set iv = item.variance_pct|default(0) %}
+          <td class="num-right {% if iv > 0 %}variance-over{% elif iv < 0 %}variance-under{% endif %}">
+            {{ '%+.1f'|format(iv) }}%
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2">合計</td>
+          <td class="num-right">{{ total_planned.h|man_hours }}</td>
+          <td class="num-right">{{ total_actual.h|man_hours }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+  {% endif %}
+
+  {# ================================================================
+     4. RISK OVERVIEW
+     ================================================================ #}
+  {% if risk_summary %}
+  <section class="section">
+    <h2>リスク総括</h2>
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-value">{{ risk_summary.total|default(0) }}</div>
+        <div class="metric-label">年間リスク総数</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" style="color:#e74c3c">{{ risk_summary.open|default(0) }}</div>
+        <div class="metric-label">未対応</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" style="color:#e74c3c">{{ risk_summary.high_risk_count|default(0) }}</div>
+        <div class="metric-label">高リスク</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" style="color:#27ae60">{{ risk_summary.resolved|default(0) }}</div>
+        <div class="metric-label">解決済</div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {# ================================================================
+     5. KEY ACHIEVEMENTS
+     ================================================================ #}
+  <section class="section">
+    <h2>主な成果</h2>
+    <div class="notes-area">
+      <ul>
+        <li>今年度の主要な成果・達成事項をここに記載してください。</li>
+        <li>例: 新規HILSプラットフォーム導入完了、テスト自動化率XX%達成 など</li>
+      </ul>
+    </div>
+  </section>
+
+  {# ================================================================
+     6. LESSONS LEARNED
+     ================================================================ #}
+  <section class="section">
+    <h2>教訓・改善提案</h2>
+    <div class="notes-area">
+      <ul>
+        <li>今年度を通じて得られた教訓、プロセス改善提案をここに記載してください。</li>
+        <li>例: 見積精度向上のための施策、リスク管理プロセスの改善 など</li>
+      </ul>
+    </div>
+  </section>
+
+  {# ================================================================
+     FOOTER
+     ================================================================ #}
+  <footer class="report-footer">
+    本レポートは HILS Manager により自動生成されました。<br>
+    生成日時: {{ report_date|default('')|jp_date }}
+  </footer>
+
+</div>
+</body>
+</html>

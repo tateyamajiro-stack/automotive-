@@ -15,10 +15,15 @@ from hils_manager.repositories.wbs_repo import WBSRepository
 from hils_manager.repositories.estimate_repo import EstimateRepository
 from hils_manager.repositories.risk_repo import RiskRepository
 from hils_manager.repositories.process_repo import ProcessRepository
+from hils_manager.repositories.settings_repo import SettingsRepository
+from hils_manager.repositories.jira_repo import JiraSyncRepository
+from hils_manager.repositories.report_repo import ReportRepository
+from hils_manager.integrations.config import ConnectionConfig
 from hils_manager.services.project_service import ProjectService
 from hils_manager.services.resource_service import ResourceService
 from hils_manager.services.estimate_service import EstimateService
 from hils_manager.services.risk_service import RiskService
+from hils_manager.services.report_service import ReportService
 from hils_manager.views.main_window import MainWindow
 
 logger = logging.getLogger(__name__)
@@ -78,11 +83,49 @@ def run() -> int:
     estimate_repo = EstimateRepository(db)
     risk_repo = RiskRepository(db)
     process_repo = ProcessRepository(db)
+    settings_repo = SettingsRepository(db)
+    jira_sync_repo = JiraSyncRepository(db)
+    report_repo = ReportRepository(db)
 
     project_service = ProjectService(project_repo, process_repo)
     resource_service = ResourceService(member_repo, project_repo)
     estimate_service = EstimateService(estimate_repo)
     risk_service = RiskService(risk_repo)
+
+    connection_config = ConnectionConfig(settings_repo)
+
+    jira_service = None
+    confluence_client = None
+    jira_cfg = connection_config.get_jira_config()
+    if jira_cfg:
+        from hils_manager.integrations.jira_client import JiraClient
+        from hils_manager.services.jira_service import JiraService
+
+        jira_client = JiraClient(jira_cfg["base_url"], jira_cfg["pat"])
+        jira_service = JiraService(
+            jira_client=jira_client,
+            jira_repo=jira_sync_repo,
+            wbs_repo=wbs_repo,
+            requirement_repo=requirement_repo,
+            risk_repo=risk_repo,
+        )
+
+    confluence_cfg = connection_config.get_confluence_config()
+    if confluence_cfg:
+        from hils_manager.integrations.confluence_client import ConfluenceClient
+
+        confluence_client = ConfluenceClient(
+            confluence_cfg["base_url"], confluence_cfg["pat"]
+        )
+
+    report_service = ReportService(
+        report_repo=report_repo,
+        project_service=project_service,
+        estimate_service=estimate_service,
+        risk_service=risk_service,
+        resource_service=resource_service,
+        confluence_client=confluence_client,
+    )
 
     window = MainWindow(
         project_service=project_service,
@@ -91,6 +134,9 @@ def run() -> int:
         risk_service=risk_service,
         requirement_repo=requirement_repo,
         wbs_repo=wbs_repo,
+        jira_service=jira_service,
+        report_service=report_service,
+        connection_config=connection_config,
     )
     window.show()
 
