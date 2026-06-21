@@ -178,7 +178,12 @@ class ProjectDetailPanel(QWidget):
         form.addRow("実績終了日:", self._lbl_actual_end)
 
         self._lbl_jira_key = QLabel("—")
-        form.addRow("Jiraプロジェクトキー:", self._lbl_jira_key)
+        self._lbl_jira_key.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        form.addRow("開発用JIRA:", self._lbl_jira_key)
+
+        self._lbl_efficiency_jira = QLabel("—")
+        self._lbl_efficiency_jira.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        form.addRow("効率化JIRA:", self._lbl_efficiency_jira)
 
         outer_layout.addWidget(info_group)
         outer_layout.addStretch()
@@ -339,6 +344,7 @@ class ProjectDetailPanel(QWidget):
             project.actual_end.strftime("%Y/%m/%d") if project.actual_end else "—"
         )
         self._lbl_jira_key.setText(project.jira_project_key or "—")
+        self._lbl_efficiency_jira.setText(project.efficiency_jira_url or "—")
 
     # ------------------------------------------------------------------
     # プロセス選択の読み込み

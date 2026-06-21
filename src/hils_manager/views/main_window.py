@@ -242,6 +242,8 @@ class MainWindow(QMainWindow):
 
     def _on_new_project(self) -> None:
         dialog = ProjectDialog(parent=self)
+        next_code = self._project_service.get_next_project_code()
+        dialog.set_project_code(next_code)
         if dialog.exec():
             project = dialog.get_project()
             self._project_service.create_project(project)
@@ -277,13 +279,26 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Jira同期", "同期する案件を選択してください。\n案件一覧から案件を開いてください。")
             return
 
-        jira_key = current_project.jira_project_key
+        jira_url = current_project.jira_project_key
+        if not jira_url:
+            QMessageBox.warning(
+                self,
+                "Jira同期",
+                f"案件「{current_project.name}」に開発用JIRAが設定されていません。\n"
+                "案件の基本情報タブで開発用JIRAのURLを設定してください。",
+            )
+            return
+
+        from hils_manager.utils.jira_url import extract_jira_project_key
+
+        jira_key = extract_jira_project_key(jira_url)
         if not jira_key:
             QMessageBox.warning(
                 self,
                 "Jira同期",
-                f"案件「{current_project.name}」にJiraプロジェクトキーが設定されていません。\n"
-                "案件の基本情報タブでJiraプロジェクトキーを設定してください。",
+                f"開発用JIRAのURLからプロジェクトキーを抽出できませんでした。\n"
+                f"URL: {jira_url}\n"
+                "URLに /projects/XXXX/ が含まれている必要があります。",
             )
             return
 

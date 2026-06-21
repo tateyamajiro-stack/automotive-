@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QMessageBox,
     QTextEdit,
@@ -23,6 +24,15 @@ from PySide6.QtWidgets import (
 
 from hils_manager.constants import ProjectStatus
 from hils_manager.models.project import Project
+
+_DEV_JIRA_PLACEHOLDER = (
+    "例: https://tateyamajiro.atlassian.net/jira/polaris/projects/YOSHI/"
+    "ideas/view/13753945?selectedIssue=YOSHI-7&issueViewSection=overview"
+)
+_EFF_JIRA_PLACEHOLDER = (
+    "例: https://tateyamajiro.atlassian.net/jira/polaris/projects/YOSHI/"
+    "ideas/view/13753945?selectedIssue=YOSHI-8&issueViewSection=overview"
+)
 
 
 class ProjectDialog(QDialog):
@@ -54,9 +64,12 @@ class ProjectDialog(QDialog):
 
         form = QFormLayout()
 
-        # 案件コード
+        # 案件コード (auto-generated, read-only)
         self._code_edit = QLineEdit()
-        self._code_edit.setPlaceholderText("例: PRJ-001")
+        self._code_edit.setReadOnly(True)
+        if not self._is_edit:
+            self._code_edit.setPlaceholderText("自動採番")
+            self._code_edit.setStyleSheet("background-color: #f0f0f0;")
         form.addRow("案件コード:", self._code_edit)
 
         # 案件名
@@ -69,11 +82,16 @@ class ProjectDialog(QDialog):
         self._description_edit.setFixedHeight(72)
         form.addRow("説明:", self._description_edit)
 
-        # ステータス
+        # ステータス (edit mode only)
         self._status_combo = QComboBox()
         for status in ProjectStatus:
             self._status_combo.addItem(status.label, status)
-        form.addRow("ステータス:", self._status_combo)
+        self._status_label = QLabel("ステータス:")
+        if self._is_edit:
+            form.addRow(self._status_label, self._status_combo)
+        else:
+            self._status_combo.hide()
+            self._status_label.hide()
 
         # 開始予定日
         self._start_date_edit = QDateEdit()
@@ -89,8 +107,10 @@ class ProjectDialog(QDialog):
         self._end_date_edit.setDate(QDate.currentDate().addMonths(3))
         form.addRow("終了予定日:", self._end_date_edit)
 
-        # 実開始日 (optional)
-        actual_start_layout = QHBoxLayout()
+        # 実開始日 (edit mode only)
+        self._actual_start_widget = QWidget()
+        actual_start_layout = QHBoxLayout(self._actual_start_widget)
+        actual_start_layout.setContentsMargins(0, 0, 0, 0)
         self._actual_start_check = QCheckBox()
         self._actual_start_check.toggled.connect(self._on_actual_start_toggled)
         actual_start_layout.addWidget(self._actual_start_check)
@@ -100,10 +120,17 @@ class ProjectDialog(QDialog):
         self._actual_start_edit.setDate(QDate.currentDate())
         self._actual_start_edit.setEnabled(False)
         actual_start_layout.addWidget(self._actual_start_edit)
-        form.addRow("実開始日:", actual_start_layout)
+        self._actual_start_label = QLabel("実開始日:")
+        if self._is_edit:
+            form.addRow(self._actual_start_label, self._actual_start_widget)
+        else:
+            self._actual_start_widget.hide()
+            self._actual_start_label.hide()
 
-        # 実終了日 (optional)
-        actual_end_layout = QHBoxLayout()
+        # 実終了日 (edit mode only)
+        self._actual_end_widget = QWidget()
+        actual_end_layout = QHBoxLayout(self._actual_end_widget)
+        actual_end_layout.setContentsMargins(0, 0, 0, 0)
         self._actual_end_check = QCheckBox()
         self._actual_end_check.toggled.connect(self._on_actual_end_toggled)
         actual_end_layout.addWidget(self._actual_end_check)
@@ -113,12 +140,22 @@ class ProjectDialog(QDialog):
         self._actual_end_edit.setDate(QDate.currentDate())
         self._actual_end_edit.setEnabled(False)
         actual_end_layout.addWidget(self._actual_end_edit)
-        form.addRow("実終了日:", actual_end_layout)
+        self._actual_end_label = QLabel("実終了日:")
+        if self._is_edit:
+            form.addRow(self._actual_end_label, self._actual_end_widget)
+        else:
+            self._actual_end_widget.hide()
+            self._actual_end_label.hide()
 
-        # Jiraプロジェクトキー
+        # 開発用JIRA (renamed from Jiraプロジェクトキー)
         self._jira_key_edit = QLineEdit()
-        self._jira_key_edit.setPlaceholderText("例: HILS")
-        form.addRow("Jiraプロジェクトキー:", self._jira_key_edit)
+        self._jira_key_edit.setPlaceholderText(_DEV_JIRA_PLACEHOLDER)
+        form.addRow("開発用JIRA:", self._jira_key_edit)
+
+        # 効率化JIRA (new field)
+        self._efficiency_jira_edit = QLineEdit()
+        self._efficiency_jira_edit.setPlaceholderText(_EFF_JIRA_PLACEHOLDER)
+        form.addRow("効率化JIRA:", self._efficiency_jira_edit)
 
         layout.addLayout(form)
 
@@ -129,6 +166,14 @@ class ProjectDialog(QDialog):
         self._button_box.accepted.connect(self.accept)
         self._button_box.rejected.connect(self.reject)
         layout.addWidget(self._button_box)
+
+    # ------------------------------------------------------------------
+    # 外部から案件コードを設定
+    # ------------------------------------------------------------------
+
+    def set_project_code(self, code: str) -> None:
+        """Set the auto-generated project code."""
+        self._code_edit.setText(code)
 
     # ------------------------------------------------------------------
     # スロット
@@ -178,6 +223,7 @@ class ProjectDialog(QDialog):
             )
 
         self._jira_key_edit.setText(project.jira_project_key)
+        self._efficiency_jira_edit.setText(project.efficiency_jira_url)
 
     @staticmethod
     def _qdate_to_date(qdate: QDate) -> date:
@@ -186,24 +232,28 @@ class ProjectDialog(QDialog):
     def get_project(self) -> Project:
         """フォーム値からProjectオブジェクトを生成して返す."""
         actual_start: date | None = None
-        if self._actual_start_check.isChecked():
-            actual_start = self._qdate_to_date(self._actual_start_edit.date())
-
         actual_end: date | None = None
-        if self._actual_end_check.isChecked():
-            actual_end = self._qdate_to_date(self._actual_end_edit.date())
+
+        if self._is_edit:
+            if self._actual_start_check.isChecked():
+                actual_start = self._qdate_to_date(self._actual_start_edit.date())
+            if self._actual_end_check.isChecked():
+                actual_end = self._qdate_to_date(self._actual_end_edit.date())
+
+        status = self._status_combo.currentData() if self._is_edit else ProjectStatus.PLANNING
 
         return Project(
             id=self._project.id if self._project else None,
             project_code=self._code_edit.text().strip(),
             name=self._name_edit.text().strip(),
             description=self._description_edit.toPlainText().strip(),
-            status=self._status_combo.currentData(),
+            status=status,
             start_date=self._qdate_to_date(self._start_date_edit.date()),
             end_date=self._qdate_to_date(self._end_date_edit.date()),
             actual_start=actual_start,
             actual_end=actual_end,
             jira_project_key=self._jira_key_edit.text().strip(),
+            efficiency_jira_url=self._efficiency_jira_edit.text().strip(),
             created_at=self._project.created_at if self._project else None,
             updated_at=self._project.updated_at if self._project else None,
         )
@@ -214,10 +264,6 @@ class ProjectDialog(QDialog):
 
     def accept(self) -> None:
         """OKボタン押下時のバリデーション."""
-        if not self._code_edit.text().strip():
-            QMessageBox.warning(self, "入力エラー", "案件コードは必須です。")
-            self._code_edit.setFocus()
-            return
         if not self._name_edit.text().strip():
             QMessageBox.warning(self, "入力エラー", "案件名は必須です。")
             self._name_edit.setFocus()

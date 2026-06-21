@@ -67,3 +67,29 @@ class TestProjectRepository:
         repo.delete(pid)
 
         assert repo.get_by_id(pid) is None
+
+    def test_get_next_project_code_empty(self, db_connection: DatabaseConnection) -> None:
+        repo = ProjectRepository(db_connection)
+        assert repo.get_next_project_code() == "PRJ-001"
+
+    def test_get_next_project_code_increments(self, db_connection: DatabaseConnection) -> None:
+        repo = ProjectRepository(db_connection)
+        repo.create(Project(project_code="PRJ-001", name="案件1"))
+        assert repo.get_next_project_code() == "PRJ-002"
+
+        repo.create(Project(project_code="PRJ-002", name="案件2"))
+        assert repo.get_next_project_code() == "PRJ-003"
+
+    def test_efficiency_jira_url_field(self, db_connection: DatabaseConnection) -> None:
+        repo = ProjectRepository(db_connection)
+        project = Project(
+            project_code="PRJ-001",
+            name="効率化テスト",
+            jira_project_key="https://jira.example.com/projects/YOSHI/board",
+            efficiency_jira_url="https://jira.example.com/projects/YOSHI/ideas",
+        )
+        pid = repo.create(project)
+        fetched = repo.get_by_id(pid)
+        assert fetched is not None
+        assert fetched.efficiency_jira_url == "https://jira.example.com/projects/YOSHI/ideas"
+        assert fetched.jira_project_key == "https://jira.example.com/projects/YOSHI/board"

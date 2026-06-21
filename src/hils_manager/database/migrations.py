@@ -17,7 +17,7 @@ _SCHEMA_DIR = Path(__file__).resolve().parent
 _SCHEMA_FILE = _SCHEMA_DIR / "schema.sql"
 
 # Bump this whenever schema.sql is updated with a new migration.
-CURRENT_SCHEMA_VERSION = "1"
+CURRENT_SCHEMA_VERSION = "2"
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> str | None:
@@ -71,14 +71,20 @@ def run_migrations(conn: sqlite3.Connection) -> None:
         logger.debug("Database is up-to-date (schema version %s).", current)
         return
 
-    # Future incremental migrations would go here, keyed on `current`.
-    # For now, log a warning if the version is somehow ahead of us.
-    logger.warning(
-        "Database schema version (%s) differs from application version (%s). "
-        "No incremental migration path defined yet.",
-        current,
-        CURRENT_SCHEMA_VERSION,
-    )
+    if current == "1":
+        logger.info("Migrating schema from version 1 to 2 ...")
+        conn.execute("ALTER TABLE projects ADD COLUMN efficiency_jira_url TEXT")
+        _set_schema_version(conn, "2")
+        conn.commit()
+        current = "2"
+        logger.info("Schema migrated to version 2.")
+
+    if current != CURRENT_SCHEMA_VERSION:
+        logger.warning(
+            "Database schema version (%s) differs from application version (%s).",
+            current,
+            CURRENT_SCHEMA_VERSION,
+        )
 
 
 def _apply_schema(conn: sqlite3.Connection) -> None:

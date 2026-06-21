@@ -36,8 +36,14 @@ class ProjectService:
         """Return a single project by id, or ``None``."""
         return self._project_repo.get_by_id(project_id)
 
+    def get_next_project_code(self) -> str:
+        """Return the next auto-generated project code."""
+        return self._project_repo.get_next_project_code()
+
     def create_project(self, project: Project) -> int:
         """Persist a new project and return its id."""
+        if not project.project_code:
+            project.project_code = self._project_repo.get_next_project_code()
         return self._project_repo.create(project)
 
     def update_project(self, project: Project) -> None:

@@ -37,9 +37,10 @@ CREATE TABLE IF NOT EXISTS projects (
     end_date         TEXT,
     actual_start     TEXT,
     actual_end       TEXT,
-    jira_project_key TEXT,
-    created_at       TEXT    DEFAULT (datetime('now')),
-    updated_at       TEXT    DEFAULT (datetime('now'))
+    jira_project_key    TEXT,
+    efficiency_jira_url TEXT,
+    created_at          TEXT    DEFAULT (datetime('now')),
+    updated_at          TEXT    DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);

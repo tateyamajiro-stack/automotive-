@@ -48,6 +48,7 @@ class ProjectRepository(BaseRepository):
                 else None
             ),
             jira_project_key=row["jira_project_key"] or "",
+            efficiency_jira_url=(row["efficiency_jira_url"] or "") if "efficiency_jira_url" in row.keys() else "",
             created_at=(
                 datetime.fromisoformat(row["created_at"])
                 if row["created_at"]
@@ -99,14 +100,30 @@ class ProjectRepository(BaseRepository):
         row = self._fetchone("SELECT * FROM projects WHERE id = ?", (project_id,))
         return self._row_to_project(row) if row else None
 
+    def get_next_project_code(self) -> str:
+        """Return the next auto-generated project code (PRJ-001, PRJ-002, ...)."""
+        row = self._fetchone(
+            "SELECT project_code FROM projects WHERE project_code LIKE 'PRJ-%' "
+            "ORDER BY id DESC LIMIT 1"
+        )
+        if row:
+            try:
+                num = int(row["project_code"].split("-")[1]) + 1
+            except (IndexError, ValueError):
+                num = 1
+        else:
+            num = 1
+        return f"PRJ-{num:03d}"
+
     def create(self, project: Project) -> int:
         now = self._now()
         cursor = self._execute(
             """
             INSERT INTO projects
                 (project_code, name, description, status, start_date, end_date,
-                 actual_start, actual_end, jira_project_key, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 actual_start, actual_end, jira_project_key, efficiency_jira_url,
+                 created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 project.project_code,
@@ -118,6 +135,7 @@ class ProjectRepository(BaseRepository):
                 project.actual_start.isoformat() if project.actual_start else None,
                 project.actual_end.isoformat() if project.actual_end else None,
                 project.jira_project_key,
+                project.efficiency_jira_url,
                 now,
                 now,
             ),
@@ -129,16 +147,17 @@ class ProjectRepository(BaseRepository):
         self._execute(
             """
             UPDATE projects
-            SET project_code     = ?,
-                name             = ?,
-                description      = ?,
-                status           = ?,
-                start_date       = ?,
-                end_date         = ?,
-                actual_start     = ?,
-                actual_end       = ?,
-                jira_project_key = ?,
-                updated_at       = ?
+            SET project_code        = ?,
+                name                = ?,
+                description         = ?,
+                status              = ?,
+                start_date          = ?,
+                end_date            = ?,
+                actual_start        = ?,
+                actual_end          = ?,
+                jira_project_key    = ?,
+                efficiency_jira_url = ?,
+                updated_at          = ?
             WHERE id = ?
             """,
             (
@@ -151,6 +170,7 @@ class ProjectRepository(BaseRepository):
                 project.actual_start.isoformat() if project.actual_start else None,
                 project.actual_end.isoformat() if project.actual_end else None,
                 project.jira_project_key,
+                project.efficiency_jira_url,
                 now,
                 project.id,
             ),

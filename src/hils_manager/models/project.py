@@ -21,6 +21,7 @@ class Project:
     actual_start: Optional[date] = None
     actual_end: Optional[date] = None
     jira_project_key: str = ""
+    efficiency_jira_url: str = ""
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
